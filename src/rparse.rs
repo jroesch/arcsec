@@ -1,9 +1,10 @@
 #![feature(struct_variant)]
+use std::iter::FromIterator;
 
-#[deriving(PartialEq, Show)]
-enum Result<T> {
-  Failed(String, String),  //ineff fix this
-  Success(T, String)
+#[deriving(Show)]
+pub enum Result<T> {
+  Failed(String, Input),  //ineff fix this
+  Success(T, Input)
 }
 
 impl<A> Result<A> {
@@ -14,6 +15,51 @@ impl<A> Result<A> {
   }
 }
 
+#[deriving(Show)]
+pub struct Input {
+  buffer: Vec<char>
+}
+
+impl Input {
+  fn from_str(source: &str) -> Input {
+    Input { buffer: FromIterator::from_iter(source.chars()) }
+  }
+
+  fn from_string(source: String) -> Input {
+    Input { buffer: FromIterator::from_iter(source.as_slice().chars()) }
+  }
+
+  fn peek(&self) -> Option<char> {
+    if self.buffer.len() > 0 {
+      Some(self.buffer[0])
+    } else {
+      None
+    }
+  }
+
+  fn pop(&mut self) -> Option<char> {
+    self.buffer.pop()
+  }
+  // Eventually allow us to move through a mutable stream in
+  // given a "view" of our data allowing for back tracking
+  // in the parser
+  // fn fast_forward
+  // fn rewind
+}
+
+#[test]
+fn input_should_only_be_modified_by_pop() {
+  let input = Input::from_str("foo");
+  let first = input.pop();
+  let second = input.pop();
+  let third = input.pop();
+  let four = input.pop();
+  assert_equal!(first, Some('f'));
+  assert_equal!(second, Some('o'));
+  assert_equal!(third, Some('o'));
+  assert_equal!(four, None)
+}
+
 #[test]
 fn map_should_only_modify_result() {
   let increment = |i: int| -> int { i + 1 };
@@ -21,102 +67,69 @@ fn map_should_only_modify_result() {
   assert_eq!(initial.map(increment), Success(2, str("unchanged")));
 }
 
-struct Parser<'a, T> {
-  parser: |String|: 'a -> Result<T>
-}
-
-enum Either<E, R> {
-  Left(E),
-  Right(R)
-}
-
-struct Pred<'a, Arg, Res> {
-  func: |Arg|: 'a -> Res
-}
-
-impl<'a, Arg, Res> Pred<'a, Arg, Res> {
-  fn call(&mut self, arg: Arg) -> Res {
-    (self.func)(arg)
-  }
-}
-
-fn alloc_pred<Arg, Res>(f: |Arg| -> Res) -> Pred<Arg, Res> {
-  Pred { func: f }
-}
-
-impl<'a, T> Parser<'a, T> {
-  fn run(self, filename: String, mut input: String) -> Either<String, T> {
-    println!("{}", filename);
-    match self {
-      Parser { parser } => {
-        match parser(input) {
-          Failed(errmsg, _) => Left(errmsg),
-          Success(v, _) => Right(v)
-        }
-      }
-    }
-  }
-}
-
 pub trait Parser<A> {
-  fn run(input : String) -> Result<A> {}
+  fn run(&mut self, input : Input) -> Result<A>;
 }
 
-struct SatifsyParser<'a> {
-  predicate: |char| -> bool
+pub struct SatisfyParser<'a> {
+  predicate: |char|: 'a -> bool
 }
 
 impl<'a> SatisfyParser<'a> {
-  fn check_sat(&mut self, input: String) -> Result<char> {
-    match input.pop_char() {
+  fn check_sat(&mut self, mut input: Input) -> Result<char> {
+    match input.peek() {
       Some(c) =>
-        if (self.predicate)(c) { Success('a', input) }
-        else { Success('a', input) },
+        if (self.predicate)(c) {
+          match input.pop() {
+            None => Failed(str("Failed!"), input),
+            Some(c) => Success(c, input)
+          }
+        }
+        else { Failed(str("Failed!"), input) },
       None => Failed(str("fucked"), input)
     }
   }
 }
 
-// impl<'a> Parser<char> {
-  pub fn satisfy<'a>(pred: &Pred<'a, char, bool>) -> Parser<'a, char> {
-    Parser { parser: |mut input: String| {
-      match input.pop_char() {
-        Some(c) => {
-          let pred2 = pred;
-          if true { Success('a', input) } else { Success('a', input) }},
-        None => Failed(str("fucked"), input)
-      }
-    }}
+impl<'a> Parser<char> for SatisfyParser<'a> {
+  fn run(&mut self, input: Input) -> Result<char> {
+    self.check_sat(input)
   }
-    //let my_pred = |c: char| true;
-    /*Parser {
-      parser: |input: String| {
-                match input.pop_char() {
-                  Some(first) => match my_pred(first) {
-                    false => {
-                      input.push_char(first);
-                      Failed(str("statisfy: failed when demanding input"), input)
-                    },
-                    true => Success(first, input)
-                  },
-                  None => Failed(str("statisfy failed"), input)
-                }
-              }
-    } */
-// }
+}
 
-// impl Parser {
-// fn satisfy(pred: |A|
-//
+fn satisfy<'a>(pred: |char|: 'a -> bool) -> SatisfyParser<'a> {
+    SatisfyParser { predicate: pred }
+}
+
+struct StringParser {
+    str_match: String
+}
+
+fn string<'a>(str: String) -> StringParser {
+  StringParser
+}
+
+#[test]
+fn string_parser_should_match_only_the_literal_string() {
+  let string_parser = string(str("A string"));
+  let here_parser = string(str("here"));
+  let input = Input::from_string("A string here");
+  let result = match string_parser.run(input) {
+    Failed(err, rest) => fail!(fmt("Parse was not successful: {}", err)),
+    Success(v, input) => here_parser.run(input)
+  };
+  assert_equal!(result, Success(v, ""))
+}
 
 fn str(s: &str) -> String { String::from_str(s) }
 
 fn main() {
-  let parserA = satisfy(&alloc_pred(|c: char| c == 'A'));
-  let result = parserA.run(String::from_str("Testing!"), str("ABBBC"));
+  let mut parserA = satisfy(|c: char| c == 'A');
+  let input = Input::from_string(String::from_str("A"));
+  let result = parserA.run(input);
   let unpacked = match result {
-    Left(e) => fail!(e),
-    Right(v) => v
+    Failed(e, _) => fail!(e),
+    Success(v, _) => v
   };
   println!("{}", unpacked)
 }
