@@ -1,9 +1,11 @@
 [package]
 
-name = "rparse"
+name = "arcsec"
 version = "0.0.1"
 authors = [ "roeschinc@gmail.com" ]
 
-[[bin]]
+[[lib]]
+name = "arcsec"
 
-name = "rparse"
+[[test]]
+name = "tests"
