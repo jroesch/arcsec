@@ -13,3 +13,15 @@ fn string_parser_should_match_only_the_literal_string() {
   };
   assert_eq!(result, Success(" here", "")) */
 }
+
+#[test]
+fn string_parser_test2() {
+  let mut parserA = satisfy(|c: char| c == 'A');
+  let input = Input::from_string(String::from_str("A"));
+  let result = parserA.run(input);
+  let unpacked = match result {
+    Failed(e, _) => fail!(e),
+    Success(v, _) => v
+  };
+  println!("{}", unpacked)
+}

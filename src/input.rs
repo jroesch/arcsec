@@ -21,7 +21,8 @@ impl Input {
   }
 
   pub fn pop(&mut self) -> Option<char> {
-    self.buffer.shift()
+    // This is probably inefficent, come up with a better representation.
+    self.buffer.remove(0)
   }
 
   /* fn consume_if_match(&mut self, str_match: &str) -> Option<(String, Input)> {

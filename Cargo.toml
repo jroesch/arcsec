@@ -7,5 +7,8 @@ authors = [ "roeschinc@gmail.com" ]
 [[lib]]
 name = "arcsec"
 
+[[bin]]
+name = "http-parser"
+
 [[test]]
 name = "tests"

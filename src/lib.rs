@@ -1,5 +1,4 @@
 #![crate_name="arcsec"]
-#![crate_type="rlib"]
 #![feature(struct_variant)]
 #![feature(globs)]
 #![allow(dead_code)]

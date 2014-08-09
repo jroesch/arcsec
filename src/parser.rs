@@ -8,6 +8,7 @@ pub trait Parser<A> {
   }
 }
 
+// A parser that represents that implements the behavior of satisfy.
 pub struct SatisfyParser<'a> {
   predicate: |char|: 'a -> bool
 }
@@ -30,7 +31,7 @@ impl<'a> SatisfyParser<'a> {
 
 impl<'a> Parser<char> for SatisfyParser<'a> {
   fn run(&mut self, input: Input) -> Result<char> {
-    fail!("Not yet") //fself.check_sat(input)
+    self.check_sat(input)
   }
 }
 
@@ -41,12 +42,11 @@ struct ThenParser<A, B, P1, P2> {
 
 impl<A, B, P1 : Parser<A>, P2: Parser<B>> Parser<B> for ThenParser<A, B, P1, P2> {
   fn run(&mut self, input: Input) -> Result<B> {
-    fail!("okay")
+    match self.first.run(input) {
+      Failed(err, rest) => Failed(err, rest),
+      Success(_, rest) => self.second.run(rest)
+    }
   }
-}
-
-fn satisfy<'a>(pred: |char|: 'a -> bool) -> SatisfyParser<'a> {
-    SatisfyParser { predicate: pred }
 }
 
 pub struct EmptyStringParser;
@@ -58,35 +58,34 @@ impl Parser<String> for EmptyStringParser {
 }
 
 pub struct StringParser {
-    str_match: String
+    match_str: String
 }
 
-pub fn string<'a>(string: String) -> StringParser {
-  StringParser { str_match: string }
-}
-
-/* impl Parser<String> for StringParser {
-  fn run(&mut self, input: Input) -> Result<String> {
-    self.str_match.as_slice().chars().map(|c| {
-      satisfy(|input_char| input_char == c);
-    }).fold(|accum, parser|{
-      match accum.run(input) {
-        Failed(err, remaining) =>
-        Success(v, remaining)
+impl Parser<String> for StringParser {
+  fn run(&mut self, mut input: Input) -> Result<String> {
+    let mut result = String::new();
+    for match_char in self.match_str.as_slice().chars() {
+      if Some(match_char) == input.peek() {
+        result.push(input.pop())
       }
-    });
+    }
+
+    if result.len() != self.match_str.len() {
+      Failed("belh", input)
+    } else {
+      Some(result, input)
+    }
   }
-} */
+}
 
 pub fn str(s: &str) -> String { String::from_str(s) }
 
-fn main() {
-  let mut parserA = satisfy(|c: char| c == 'A');
-  let input = Input::from_string(String::from_str("A"));
-  let result = parserA.run(input);
-  let unpacked = match result {
-    Failed(e, _) => fail!(e),
-    Success(v, _) => v
-  };
-  println!("{}", unpacked)
+impl Parser {
+  fn satisfy<'a>(pred: |char|: 'a -> bool) -> SatisfyParser<'a> {
+    SatisfyParser { predicate: pred }
+  }
+
+  pub fn string<'a>(string: String) -> StringParser {
+    StringParser { match_str: string }
+  }
 }
