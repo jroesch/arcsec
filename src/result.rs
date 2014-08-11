@@ -1,11 +1,10 @@
-use input::*;
-
+use ibuffer::*;
 use std::iter::FromIterator;
 
 #[deriving(Show, PartialEq)]
 pub enum Result<T> {
-  Failed(String, Input),  //ineff fix this
-  Success(T, Input)
+  Failed(String, IBuffer),  //ineff fix this
+  Success(T, IBuffer)
 }
 
 impl<A> Result<A> {
@@ -14,4 +13,11 @@ impl<A> Result<A> {
       Failed(e, remaining) => Failed(e.clone(), remaining),
       Success(v, remaining) => { Success(f(v), remaining) }}
   }
+
+/*  pub fn flat_map<B>(&self, f: |A| -> Result<B>) -> Result<B> {
+    match *self {
+      Success(v, remaining) => Success(f(v), remaining),
+      Failed(e, remaining) => Failed(e, remaining)
+    }
+  } */
 }
