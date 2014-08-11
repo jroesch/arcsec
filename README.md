@@ -1,4 +1,4 @@
-arcsec[![Build Status](https://secure.travis-ci.org/jroesch/Tweak.png)](http://travis-ci.org/jroesch/arcsec)
+arcsec[![Build Status](https://travis-ci.org/jroesch/arcsec.svg?branch=master)](http://travis-ci.org/jroesch/arcsec)
 ======
 
 Parser combinators in Rust
