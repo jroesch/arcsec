@@ -6,7 +6,6 @@
 //#![deny(warnings)]
 extern crate core;
 
-pub mod input;
 pub mod ibuffer;
 pub mod parser;
 pub mod result;
